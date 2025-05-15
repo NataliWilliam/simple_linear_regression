@@ -1,0 +1,209 @@
+---
+title: "Stat 140 - Simple Linear Regression"
+author: "Natali Kostadinovic"
+date: "2024-05-06"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(readxl)
+library(GGally)
+
+```
+
+```{r}
+
+library_data = suppressWarnings(read_excel('Library_weather_clean(1).xlsx', '2020'))
+```
+
+**Introduction**
+
+I am working with a climate monitoring data set for the year 2020, specifically focusing on the Clapp-Library station. I chose this data set because I am curious to learn more about it. The variables I am working with from the 2020 data set are wind speed (m/s) and gust speed (m/s). Gust Speed (m/s) is on the x-axis as the explanatory variable, and wind speed (m/s) is on the y-axis as the response variable. Both are classified as numerical continuous variables. The question I am interested in answering is whether there is a linear relationship between gust speed and wind speed and then conducting the hypothesis testing. To answer this question, I will be conducting a hypothesis test with regression. For this project, I will assume independence. We approached this project by first selecting a data set, then creating plots with the chosen variables. Next, we conducted inference, which involved generating additional plots, addressing specific conditions, choosing significance level and a summary table. Finally, based on the data from this table, I will perform hypothesis testing.
+
+
+**Data Wrangling**
+```{r}
+head(library_data)
+```
+
+
+```{r}
+
+glimpse(library_data)
+
+```
+
+
+**Descriptives**
+
+
+```{r}
+
+# Select numeric columns and drop NAs
+library_data <- library_data %>%
+  select(where(is.numeric)) %>%
+  drop_na()
+
+# Suppress warnings and run ggpairs
+suppressWarnings({
+  ggpairs(library_data)
+})
+
+
+```
+
+The pairwise plot reveals that wind speed and gust speed are highly correlated (r = 0.963), supporting a strong linear relationship. Additionally, air temperature shows a strong positive correlation with dew point and a negative relationship with relative humidity. These insights help identify meaningful predictors and check for collinearity in future models.
+
+You are going to need to remake the plots here! And reload in your data. Here are some chunks to get you started and you can add more as needed:
+
+```{r}
+library_data  %>%
+  ggplot() +
+ geom_point(aes(x=`Gust Speed (m/s)`, y=`Wind Speed (m/s)`)) # creates the most basic scatter plot
+
+```
+
+**Inference**
+
+
+**1. Clean data for Regression**
+```{r}
+# Rename variables for simplicity
+wind <- library_data %>%
+  rename(
+    wind_speed = `Wind Speed (m/s)`,
+    gust_speed = `Gust Speed (m/s)`
+  )
+head(wind)
+
+```
+
+```{r}
+
+# Drop NAs after renaming
+wind <- wind %>%
+  mutate(
+    wind_speed = as.numeric(wind_speed),
+    gust_speed = as.numeric(gust_speed)
+  ) %>%
+  drop_na(wind_speed, gust_speed)
+
+
+```
+
+
+**2.Run the Regression Model**
+```{r}
+wind %>%
+  ggplot(aes(x=gust_speed,y=wind_speed)) +
+  geom_point() + 
+  geom_smooth(method = 'lm', se = FALSE)
+
+```
+
+**3. Output summary table**
+```{r}
+wind_lm1 = lm(wind_speed ~ gust_speed, data = wind)
+summary(wind_lm1)
+```
+
+**4. Check if Residuals are Normal and Assume other Conditions, but Clearly Describe All Conditions**
+
+
+```{r}
+data.frame("fitted" = wind_lm1$fitted,
+           "residuals" = wind_lm1$residuals) %>%
+  ggplot() +
+  geom_histogram(aes(x = residuals), bins = 30)
+
+
+```
+
+
+**Address the 4 conditions for regression:**
+
+1. Check linearity - From scatter plot we can conclude that is linear. 
+2. Check the residuals are they nearly normal? - Residuals nearly normally distributed. 
+3. Check that the variability is constant -The variability of points around the least squares line remain roughly constant. 
+4. Assume independent observations and check that the data has no other structure - It is hard to tell but I will assume that is independent. 
+
+**5. Interpret the summary table and interpret the coefficents.**
+
+
+1) Linear model equation: 
+
+
+$$ \hat{wind} = \beta_0 + \beta_1 \cdot (\text{gust_speed}) $$
+
+
+
+$$ \hat{wind} = -0.239351 + 0.467138 * (gust_speed) $$
+
+2) Interpret slope:
+
+
+0.467138 tells us that if one gust speed is 1 m/s faster than another gust speed, corresponding wind speed is predicted to be 0.467138 m/s faster.
+
+
+3) Interpret y - int: 
+
+
+-0.239351 is the predicted value of wind speed when gust speed is 0 m/s.This does not make sense in our context because it is not possible for the wind speed to be negative when the gust speed is 0 m/s.  
+
+4) Interpret R-squared: 0.9271
+
+0.9271 means that 92.71% of the variation in the wind speed (m/s) is explained by the model. 
+
+5) correlation coefficient (r): 
+
+```{r}
+sqrt(0.9271)
+``` 
+r = + 0.9628603
+
+We know r is positive because looking at the graph, both values (x,y) are increasing(positive association)
+
+Direction : positive
+
+Form: linear 
+
+Strength: strong
+
+**Hypothesis testing:**
+
+Significance level: 0.05
+
+We have previously found the least squares line and addressed the conditions to do the test. Since most of the 
+conditions are definitely met, we should still proceed with caution when interpreting our results.
+
+From the summary of the least squares line we know that our p-value 2e-16
+
+
+$H_0 : \beta_1  = 0$
+$H_A :  \beta_1 \not =  0$
+
+Since 2e-16 < 0.05 we have evidence to reject $H_0$ in favor of $H_A$. We have strong evidence in favor of the gust speed being a predictor for wind speed.
+
+
+**Confidence interval**
+
+```{r}
+
+confint(wind_lm1, level = 0.95)
+
+```
+Since this CI does not include 0, it supports that the relationship is statistically significant, gust speed is a strong positive predictor of wind speed.
+
+
+**Conclusion**
+
+
+I wanted to find out if gust speed can predict wind speed, so I used hypothesis test with regression to figure this out. At the end of my study, I discovered strong evidence that gust speed is a good predictor of wind speed. This makes sense because gust speed is the highest speed in short moments, like a few seconds, and wind speed is the average over longer times. Usually, if gust speed goes up, wind speed does too, and the other way around. I only assumed that the data were independent, which is something I need to check more carefully in future projects. This project taught me how important it is to choose the significance level and decide the test I will be using before looking at the data. Another thing I learned is how easy it is to manipulate our answers/conclusions if we first look at the data and then pick test and significance level. I'm happy with this data set, but I'm looking forward to working with different data sets in the field of genetics.
